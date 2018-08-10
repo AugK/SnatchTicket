@@ -20,36 +20,42 @@ def select_submit(b, choice):
 
     if not selected.has_class("selected"):
         selected.click()
-
-    if b.is_element_present_by_text("确认预订"):
-        b.click_link_by_id("btn_submit")  # click"确认预订"
-    elif b.is_element_present_by_text("已订完"):
-        print("已订完，明天再试吧！")
-    else:
-        print("unknown situation")
-        b.reload()
-        select_submit(b, choice)
+    try:
+        if b.is_element_present_by_value("确认预订"):
+            b.click_link_by_id("btn_submit")  # click"确认预订"
+        elif b.is_element_present_by_text("已订完"):
+            print("已订完，明天再试吧！")
+        else:
+            print("unknown situation")
+            b.reload()
+            select_submit(b, choice)
+    except Exception as e:
+        print(e)
 
 
 def loop_popup(b, choice):  # 循环点击
     try:
         if b.is_element_present_by_id("popup_ok", 20):  # wait for popup window
             b.click_link_by_id("popup_ok")  # click"确认"
+
+            pop_msg = ""
             if b.is_element_present_by_id("popup_message", 10):
                 pop_msg = b.find_by_id("popup_message").text  # 获取popup message
                 print(pop_msg+" "+time.strftime("%H:%M:%S", time.localtime(time.time())))
-            if "当前时间不可预定" in pop_msg or len(pop_msg) > 100:
-                b.click_link_by_id("popup_ok")
-                select_submit(b, choice)
-                loop_popup(b, choice)
-            elif "预订已满" in pop_msg:
-                print("别瞎忙活了，票没了")
-            else:
+
+            if "成功" in pop_msg:
                 b.click_link_by_id("popup_ok")
                 print("已预订成功，请等待短信通知^_^")
                 b.reload()
                 select_submit(b, choice)
                 loop_popup(b, choice)
+            elif "当前时间不可预定" in pop_msg or len(pop_msg) > 100:
+                b.click_link_by_id("popup_ok")
+                select_submit(b, choice)
+                loop_popup(b, choice)
+            elif "预订已满" in pop_msg:
+                print("别瞎忙活了，票没了")
+
         else:
             print("no response, try again")
             b.reload()
@@ -62,7 +68,7 @@ def loop_popup(b, choice):  # 循环点击
         print(e)
 
 
-def run(user, password, choice="2", head=False):
+def run(user, password, choice="2", headless=False):
     # init time
     today = time.localtime(time.time())
     year = today.tm_year
@@ -73,13 +79,11 @@ def run(user, password, choice="2", head=False):
     end_time = datetime.datetime(year, mon, day, 7, 1, 0, 0)
     halt_time = datetime.datetime(year, mon, day, 7, 2, 0)
 
-    # account info
-    user = user
-    password = password
+    # purpose
     print("今天抢星期", today.tm_wday + int(choice), "的票")
 
     # init browser
-    b = splinter.Browser(driver_name="chrome", headless=head)
+    b = splinter.Browser(driver_name="chrome", headless=headless)
 
     # visit url & login
     b.visit("http://www.wentiyun.cn/venue-722.html")
