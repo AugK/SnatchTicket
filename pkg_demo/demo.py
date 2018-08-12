@@ -68,7 +68,7 @@ def loop_popup(b, choice):  # 循环点击
         print(e)
 
 
-def run(user, password, choice="2", headless=False):
+def run(user, password, url="http://www.wentiyun.cn/venue-722.html", choice="2", headless=False):
     # init time
     today = time.localtime(time.time())
     year = today.tm_year
@@ -86,7 +86,7 @@ def run(user, password, choice="2", headless=False):
     b = splinter.Browser(driver_name="chrome", headless=headless)
 
     # visit url & login
-    b.visit("http://www.wentiyun.cn/venue-722.html")
+    b.visit(url)
     login(b, user, password)
     select_submit(b, choice)
 
