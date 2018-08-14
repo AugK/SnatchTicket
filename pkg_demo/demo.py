@@ -55,6 +55,13 @@ def loop_popup(b, choice):  # 循环点击
                 loop_popup(b, choice)
             elif "预订已满" in pop_msg:
                 print("别瞎忙活了，票没了")
+            elif "默认泳池" in pop_msg:
+                b.click_link_by_id("popup_ok")  # not sure
+            else:
+                print(pop_msg)
+                b.reload()
+                select_submit(b, choice)
+                loop_popup(b, choice)
 
         else:
             print("no response, try again")
@@ -64,6 +71,7 @@ def loop_popup(b, choice):  # 循环点击
 
     except splinter.exceptions.ElementDoesNotExist as e:
         b.reload()
+        select_submit(b, choice)
         loop_popup(b, choice)
         print(e)
 
