@@ -25,9 +25,6 @@ def select_submit(b, choice):
         print(e)
         b.reload()
         select_submit(b, choice)
-    else:
-        print("line29: unknow situation\n"
-              "=========END=========")
 
 
 def loop_popup(b, choice):  # 循环点击
@@ -47,9 +44,6 @@ def loop_popup(b, choice):  # 循环点击
                 if "成功" in pop_msg:
                     b.click_link_by_id("popup_ok")
                     print("已预订成功，请等待短信通知^_^")
-                    b.reload()
-                    select_submit(b, choice)
-                    loop_popup(b, choice)
 
                 elif "当前时间不可预定" in pop_msg or len(pop_msg) > 100:
                     b.click_link_by_id("popup_ok")
