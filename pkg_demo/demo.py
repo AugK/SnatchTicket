@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import splinter
 import time
 import datetime
@@ -18,6 +16,7 @@ def login(b, username, password):   # 登录账号
 def select_submit(b, choice):
     try:
         selected = b.find_by_xpath("//*[@class=\"datelist\"]/li["+choice+"]")
+        selected.click()
         if not selected.has_class("selected"):
             selected.click()
 
@@ -29,7 +28,7 @@ def select_submit(b, choice):
 
 def loop_popup(b, choice):  # 循环点击
     try:
-        if b.is_element_present_by_value("确认预订"):
+        if b.find_by_xpath("//*[@id=\"btn_submit\"]/..").first.visible:
             b.click_link_by_id("btn_submit")  # click"确认预订"
 
             if b.is_element_present_by_id("popup_ok", 30):  # wait for popup window
@@ -77,11 +76,11 @@ def loop_popup(b, choice):  # 循环点击
             select_submit(b, choice)
             loop_popup(b, choice)
 
-    except splinter.exceptions.ElementDoesNotExist as e:
+    except Exception as e:
+        print(e)
         b.reload()
         select_submit(b, choice)
-        loop_popup(b, choice)
-        print(e)
+        loop_popup(b, choice)        
 
 
 def run(user, password, url="http://www.wentiyun.cn/venue-722.html", choice="2", headless=False):
@@ -117,6 +116,7 @@ def run(user, password, url="http://www.wentiyun.cn/venue-722.html", choice="2",
         elif now > halt_time:
             print(now)
             print("=========OVER TIME=========")
+            b.quit()
             break
 
 
