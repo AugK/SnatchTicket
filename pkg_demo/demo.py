@@ -42,7 +42,7 @@ def login(b, username, password):   # 登录账号
 def select_submit(b, choice):
 
     try:     
-        selected = b.find_by_xpath("//*[@class=\"datelist\"]/li["+(choice)+"]")
+        selected = b.find_by_xpath("//*[@class=\"datelist\"]/li["+choice+"]")
         if selected:
             selected.click()
             if not selected.has_class("selected"):
