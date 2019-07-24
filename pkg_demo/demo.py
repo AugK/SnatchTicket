@@ -1,12 +1,34 @@
-#!/usr/bin/python3
-
 import splinter
 import time
 import datetime
 import random
-
+import logging
+from splinter.driver.webdriver.chrome import WebDriver
+from selenium.webdriver.chrome.options import Options
 
 success_flag = False
+
+
+# create logger
+logger_name = "snatchTikcet"
+logger = logging.getLogger(logger_name)
+logger.setLevel(logging.DEBUG)
+
+
+def logHandler(username):
+    # create file handler
+    log_path = "./{}_log.log".format(username)
+    fh = logging.FileHandler(log_path, encoding='UTF-8')
+    fh.setLevel(logging.INFO)
+
+    # create formatter
+    fmt = "%(asctime)-15s %(levelname)s %(filename)s line#:%(lineno)d %(message)s"
+    datefmt = "%a %d %b %Y %H:%M:%S"
+    formatter = logging.Formatter(fmt, datefmt)
+
+    # add handler and formatter to logger
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
 
 def login(b, username, password):   # 登录账号
@@ -14,98 +36,128 @@ def login(b, username, password):   # 登录账号
     b.fill("username", username)
     b.fill("password", password)
     b.click_link_by_id("subButton")
-    print("{}登录成功:{}".format(username+"\n",
-                             time.strftime("%H:%M:%S", time.localtime(time.time()))))
+    logger.info("{}登录成功".format(username))
 
 
 def select_submit(b, choice):
-    try:
-        selected = b.find_by_xpath("//*[@class=\"datelist\"]/li["+choice+"]")
-        if not selected.has_class("selected"):
-            selected.click()
 
-    except AttributeError as e:
-        print(e)
+    try:     
+        selected = b.find_by_xpath("//*[@class=\"datelist\"]/li["+(choice)+"]")
+        if selected:
+            selected.click()
+            if not selected.has_class("selected"):
+                selected.click()
+        else:
+            b.reload()
+            select_submit(b, choice)
+
+    except Exception as e:
+        logger.error(e)
         b.reload()
         select_submit(b, choice)
 
+def re_start(b, choice, url, user, password):
+    b.visit(url)
+    select_submit(b, choice)
+    main_process(b, choice, url, user, password)
 
-def loop_popup(b, choice, url):  # 循环点击
+def main_process(b, choice, url, user, password):  # 循环点击
     try:
-        if b.is_element_present_by_value("确认预订"):
+        global success_flag
+
+        if b.is_element_present_by_text("已订完"):
+            logger.warn("已订完，明天再试吧！")
+        elif b.is_element_present_by_xpath("*[@class=\"error_box\"]"):
+            re_start(b, choice, url, user, password)
+
+        elif b.find_by_xpath("//*[@id=\"btn_submit\"]/..").first.visible:
+            logger.info('click submit button')
             b.click_link_by_id("btn_submit")  # click"确认预订"
 
-            if b.is_element_present_by_id("popup_ok", 30):  # wait for popup window
+            # wait for popup window
+            if b.is_element_present_by_id("popup_ok", 20):
+                logger.info('click confirm button')
                 b.click_link_by_id("popup_ok")  # click"确认"
 
                 pop_msg = ""
-                global success_flag
 
-                if b.is_element_present_by_id("popup_message", 30):
-                    pop_msg = b.find_by_id("popup_message").text  # 获取popup message
-                    print(pop_msg + " " + time.strftime("%H:%M:%S", time.localtime(time.time())))
+                if b.is_element_present_by_id("popup_message", 40):
+                    pop_msg = b.find_by_id(
+                        "popup_message").text  # 获取popup message
+                    logger.info(pop_msg + "\n")
 
                 if "成功" in pop_msg:
+                    logger.info('click ok button')
                     b.click_link_by_id("popup_ok")
-                    print("已预订成功，请等待短信通知^_^")
+                    logger.warn("已预订成功，请等待短信通知^_^")
                     success_flag = True
 
                 elif "当前时间不可预定" in pop_msg or len(pop_msg) > 100:
+                    logger.info('click outtime button')
                     b.click_link_by_id("popup_ok")
-                    select_submit(b, choice)
-                    loop_popup(b, choice, url)
+                    re_start(b, choice, url, user, password)
 
-                elif "已" in pop_msg: # "预订已满", "您已预定当前场次"
-                    print("别瞎忙活了，票没了")
+                elif "已" in pop_msg:  # "预订已满", "您已预定当前场次"
+                    logger.warn("别瞎忙活了，票没了")
                     success_flag = True
 
-                elif "默认泳池" in pop_msg:
-                    b.click_link_by_id("popup_ok")  # not sure
+                elif "登录" in pop_msg:
+                    login(b, user, password)
+                    re_start(b, choice, url, user, password)
 
                 else:
-                    print(pop_msg + "\n\tline66：unknow situation")
-                    b.reload()
-                    select_submit(b, choice)
-                    loop_popup(b, choice, url)
+                    logger.error(pop_msg + "\nline66：unknow situation")
+                    re_start(b, choice, url, user, password)
 
             else:
-                print("no response, try again")
-                b.visit(url)
-                select_submit(b, choice)
-                loop_popup(b, choice, url)
+                logger.info("无响应，重新加载")
+                re_start(b, choice, url, user, password)
 
-        elif b.is_element_present_by_text("已订完"):
-            print("已订完，明天再试吧！")
-            success_flag = True
+        elif b.url != url:
+            re_start(b, choice, url, user, password)
 
         else:
-            print("line81: unknown situation")
-            b.visit(url)
-            select_submit(b, choice)
-            loop_popup(b, choice, url)
+            logger.error("网站崩溃了")
+            re_start(b, choice, url, user, password)
 
     except Exception as e:
-        b.visit(url)
-        select_submit(b, choice)
-        loop_popup(b, choice, url)
-        print(e)
+        logger.error(e)
+        re_start(b, choice, url, user, password)
 
 
-def run(user, password, url="http://www.wentiyun.cn/venue-722.html", choice="2", headless=False):
+def run(user, password, url="http://www.wentiyun.cn/venue-722.html",
+        choice="1", headless=False):
+
+    # init logger
+    logHandler(user)
+
     # init time
     today = time.localtime(time.time())
     year = today.tm_year
     mon = today.tm_mon
     day = today.tm_mday
+
+    interval = random.randint(0, 5)
+
     # start/end time
-    start_time = datetime.datetime(year, mon, day, 7, 0, 0, random.randint(0, 5))
-    end_time = datetime.datetime(year, mon, day, 7, 1, 0, 0)
+    start_time = datetime.datetime(year, mon, day, 7, 0, 0, interval)
+    end_time = datetime.datetime(year, mon, day, 7, 5, 0, 0)
 
     # purpose
-    print("今天抢星期", today.tm_wday + int(choice), "的票")
+    logger.info("今天抢星期{}的票".format(today.tm_wday + int(choice) + 1))
 
     # init browser
-    b = splinter.Browser(driver_name="chrome", headless=headless)
+    # webdriver= splinter.Browser.webdriver
+    # options = webdriver.ChromeOptions()
+    # options.add_argument('--ignore-certificate-errors')
+    # options.add_argument('--ignore-ssl-errors')
+    # driver = webdriver.Chrome(chrome_options=options)
+    custom_options = Options()
+    custom_options.add_argument('--ignore-certificate-errors')
+    custom_options.add_argument('--ignore-ssl-errors')
+
+    b = splinter.Browser(driver_name="chrome",user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36',
+                         headless=headless, options=custom_options)
 
     # visit url & login
     b.visit(url)
@@ -116,14 +168,16 @@ def run(user, password, url="http://www.wentiyun.cn/venue-722.html", choice="2",
     while True:
         now = datetime.datetime.now()
         if start_time < now < end_time and not success_flag:
-            print("start snatching...")
-            print(now)
-            loop_popup(b, choice, url)
-        else:
-            print(now)
-            print("=========OVER TIME=========") if success_flag else print("=========OVER TIME=========")
+            logger.info("开始抢票咯...")
+            main_process(b, choice, url, user, password)
+        elif now > end_time or success_flag:
+            # logger.info("抢票结束")
+            # main_process(b, choice, url, user, password)
+            logger.info("=========抢完了=========") if success_flag else logger.info(
+                "=========超时未抢到=========")
+            b.quit()
             break
 
 
 if __name__ == "__main__":
-    run("13812345678", "password")
+    run("user", "password")
