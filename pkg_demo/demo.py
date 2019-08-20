@@ -17,7 +17,7 @@ logger.setLevel(logging.DEBUG)
 
 def logHandler(username):
     # create file handler
-    log_path = "./{}_log.log".format(username)
+    log_path = "./{}.log".format(username)
     fh = logging.FileHandler(log_path, encoding='UTF-8')
     fh.setLevel(logging.INFO)
 
@@ -65,9 +65,11 @@ def main_process(b, choice, url, user, password):  # 循环点击
     try:
         global success_flag
 
-        if b.is_element_present_by_text("已订完"):
-            logger.warn("已订完，明天再试吧！")
-        elif b.is_element_present_by_xpath("*[@class=\"error_box\"]"):
+        # if b.is_element_present_by_text("已订完"):
+        #     logger.warn("已订完，明天再试吧！")
+
+        if b.is_element_present_by_xpath("*[@class=\"error_box\"]"):
+            logger.info('error box')
             re_start(b, choice, url, user, password)
 
         elif b.find_by_xpath("//*[@id=\"btn_submit\"]/..").first.visible:
@@ -90,7 +92,7 @@ def main_process(b, choice, url, user, password):  # 循环点击
                     logger.info('click ok button')
                     b.click_link_by_id("popup_ok")
                     logger.warn("已预订成功，请等待短信通知^_^")
-                    success_flag = True
+                    # success_flag = True
 
                 elif "当前时间不可预定" in pop_msg or len(pop_msg) > 100:
                     logger.info('click outtime button')
@@ -99,9 +101,10 @@ def main_process(b, choice, url, user, password):  # 循环点击
 
                 elif "已" in pop_msg:  # "预订已满", "您已预定当前场次"
                     logger.warn("别瞎忙活了，票没了")
-                    success_flag = True
+                    # success_flag = True
 
                 elif "登录" in pop_msg:
+                    logger.info(pop_msg)
                     login(b, user, password)
                     re_start(b, choice, url, user, password)
 
@@ -114,6 +117,7 @@ def main_process(b, choice, url, user, password):  # 循环点击
                 re_start(b, choice, url, user, password)
 
         elif b.url != url:
+            login(b, user, password)
             re_start(b, choice, url, user, password)
 
         else:
@@ -141,17 +145,12 @@ def run(user, password, url="http://www.wentiyun.cn/venue-722.html",
 
     # start/end time
     start_time = datetime.datetime(year, mon, day, 7, 0, 0, interval)
-    end_time = datetime.datetime(year, mon, day, 7, 5, 0, 0)
+    end_time = datetime.datetime(year, mon, day, 7, 15, 0, 0)
 
     # purpose
     logger.info("今天抢星期{}的票".format(today.tm_wday + int(choice) + 1))
 
     # init browser
-    # webdriver= splinter.Browser.webdriver
-    # options = webdriver.ChromeOptions()
-    # options.add_argument('--ignore-certificate-errors')
-    # options.add_argument('--ignore-ssl-errors')
-    # driver = webdriver.Chrome(chrome_options=options)
     custom_options = Options()
     custom_options.add_argument('--ignore-certificate-errors')
     custom_options.add_argument('--ignore-ssl-errors')
@@ -180,4 +179,4 @@ def run(user, password, url="http://www.wentiyun.cn/venue-722.html",
 
 
 if __name__ == "__main__":
-    run("user", "password")
+    run("username", "password")
